@@ -73,7 +73,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@b53be03109c4ef6f6cc7aa545b84b17a7fe51c1e
+        uses: docker/metadata-action@906ecf0fc0a80f9110f79d9e6c04b1080f4a2621
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -94,7 +94,7 @@ jobs:
           cache-to: type=gha,mode=max
           allow: network.host,security.insecure
           network: host
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           build-args: |
             GITHUB_REF=$GITHUB_REF
             GITHUB_SHA=$GITHUB_SHA
