@@ -94,6 +94,13 @@ sheet, sidebar, skeleton, tabs, tooltip (+ more).
 - `?host=N` routing; `useHostId()` (`lib/swr`); preserve params via
   `buildUrl(pathname, { host }, searchParams)`.
 - Hooks at deepest consumer — no `hostId` prop drilling.
+- **Clickable summary card → detail dialog:** make the WHOLE card the target
+  (`role="button"` + `tabIndex={0}` + `onClick` + `onKeyDown={activateOnEnterOrSpace(open)}`
+  from `lib/a11y.ts` — never a nested `<button>`); inner links call
+  `e.stopPropagation()` (NOT `preventDefault`) so they still navigate. Reveal a
+  hover/focus "Details" hint. Drive drill-down generically from a per-item field
+  (e.g. each health check's `detailChartName`) rendered via `ResultTable`, not
+  per-card code — see `components/health/{health-card-shell,health-detail-rows}.tsx`.
 - Graceful revalidation: keep data on `staleError`, show hover-revealed amber
   `ChartStaleIndicator`; only blank out on initial `error && !hasData`.
 - Icons: `lucide-react`, `size-4` / `size-3.5`, `strokeWidth={1.5}`.
