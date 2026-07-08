@@ -7,63 +7,54 @@ import type { ChartQueryBuilder } from './types'
 
 import { buildTimeFilter } from '@/lib/clickhouse-query'
 
+function percentileThreshold(percentile: string, column: string): string {
+  return percentile === '100'
+    ? `max(${column})`
+    : `quantile(0.${percentile})(${column})`
+}
+
 export const insightCharts: Record<string, ChartQueryBuilder> = {
   'insight-largest-scan': (params) => {
     const timeFilter = buildTimeFilter(params.lastHours)
+    const percentile = (params.params?.percentile as string) || '99'
+    const threshold = percentileThreshold(percentile, 'read_bytes')
     return {
       query: `
         SELECT
-          formatReadableSize(read_bytes) as readable_bytes,
-          formatReadableQuantity(read_rows) as readable_rows,
-          read_bytes,
-          read_rows,
-          query_duration_ms,
-          formatReadableSize(read_bytes / greatest(query_duration_ms, 1) * 1000) as readable_speed,
-          user,
-          event_time
+          formatReadableSize(${threshold}) as readable_bytes,
+          ${threshold} as read_bytes
         FROM system.query_log
         WHERE type = 'QueryFinish' AND is_initial_query = 1 ${timeFilter ? `AND ${timeFilter}` : ''}
-        ORDER BY read_bytes DESC
-        LIMIT 1
       `,
     }
   },
 
   'insight-fastest-scan': (params) => {
     const timeFilter = buildTimeFilter(params.lastHours)
+    const percentile = (params.params?.percentile as string) || '99'
+    const speedExpr = `read_bytes / greatest(query_duration_ms, 1) * 1000`
+    const threshold = percentileThreshold(percentile, speedExpr)
     return {
       query: `
         SELECT
-          formatReadableSize(read_bytes / greatest(query_duration_ms, 1) * 1000) as readable_speed,
-          read_bytes / greatest(query_duration_ms, 1) * 1000 as bytes_per_second,
-          formatReadableSize(read_bytes) as readable_bytes,
-          read_bytes,
-          query_duration_ms,
-          user,
-          event_time
+          formatReadableSize(${threshold}) as readable_speed,
+          ${threshold} as bytes_per_second
         FROM system.query_log
         WHERE type = 'QueryFinish' AND is_initial_query = 1 AND query_duration_ms > 0 ${timeFilter ? `AND ${timeFilter}` : ''}
-        ORDER BY bytes_per_second DESC
-        LIMIT 1
       `,
     }
   },
 
   'insight-longest-query': (params) => {
     const timeFilter = buildTimeFilter(params.lastHours)
+    const percentile = (params.params?.percentile as string) || '99'
+    const threshold = percentileThreshold(percentile, 'query_duration_ms')
     return {
       query: `
         SELECT
-          query_duration_ms,
-          formatReadableSize(memory_usage) as readable_memory,
-          formatReadableSize(read_bytes) as readable_bytes,
-          substring(query, 1, 200) as query,
-          user,
-          event_time
+          ${threshold} as query_duration_ms
         FROM system.query_log
         WHERE type = 'QueryFinish' AND is_initial_query = 1 ${timeFilter ? `AND ${timeFilter}` : ''}
-        ORDER BY query_duration_ms DESC
-        LIMIT 1
       `,
     }
   },

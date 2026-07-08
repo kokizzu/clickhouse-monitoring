@@ -9,47 +9,55 @@ interface RangeStatProps {
   readonly lastHours?: number
 }
 
-export function LargestScanStat({ hostId, lastHours }: RangeStatProps) {
+interface PercentileStatProps extends RangeStatProps {
+  readonly percentile: string
+}
+
+export function LargestScanStat({
+  hostId,
+  lastHours,
+  percentile,
+}: PercentileStatProps) {
   const { data, isLoading, error, sql, metadata } = useChartData({
     chartName: 'insight-largest-scan',
     hostId,
     lastHours,
+    params: { percentile },
   })
-  if (isLoading) return statLoading('Largest Scan')
-  if (error || !data?.length)
-    return statEmpty('Largest Scan', sql, data, metadata)
+  const label = `Largest Scan (p${percentile})`
+  if (isLoading) return statLoading(label)
+  if (error || !data?.length) return statEmpty(label, sql, data, metadata)
   const d = data[0] as Record<string, unknown>
   return (
     <StatCard
-      title="Largest Scan"
+      title={label}
       icon={<HardDriveIcon className="size-3.5 text-blue-500" />}
       sql={sql}
       data={data}
       metadata={metadata}
       value={String(d.readable_bytes)}
-      subtitle={
-        <>
-          {String(d.readable_rows)} in{' '}
-          {formatDuration(Number(d.query_duration_ms))}
-        </>
-      }
     />
   )
 }
 
-export function FastestScanStat({ hostId, lastHours }: RangeStatProps) {
+export function FastestScanStat({
+  hostId,
+  lastHours,
+  percentile,
+}: PercentileStatProps) {
   const { data, isLoading, error, sql, metadata } = useChartData({
     chartName: 'insight-fastest-scan',
     hostId,
     lastHours,
+    params: { percentile },
   })
-  if (isLoading) return statLoading('Fastest Scan Speed')
-  if (error || !data?.length)
-    return statEmpty('Fastest Scan Speed', sql, data, metadata)
+  const label = `Fastest Scan Speed (p${percentile})`
+  if (isLoading) return statLoading(label)
+  if (error || !data?.length) return statEmpty(label, sql, data, metadata)
   const d = data[0] as Record<string, unknown>
   return (
     <StatCard
-      title="Fastest Scan Speed"
+      title={label}
       icon={<ZapIcon className="size-3.5 text-yellow-500" />}
       sql={sql}
       data={data}
@@ -59,19 +67,24 @@ export function FastestScanStat({ hostId, lastHours }: RangeStatProps) {
   )
 }
 
-export function LongestQueryStat({ hostId, lastHours }: RangeStatProps) {
+export function LongestQueryStat({
+  hostId,
+  lastHours,
+  percentile,
+}: PercentileStatProps) {
   const { data, isLoading, error, sql, metadata } = useChartData({
     chartName: 'insight-longest-query',
     hostId,
     lastHours,
+    params: { percentile },
   })
-  if (isLoading) return statLoading('Longest Query')
-  if (error || !data?.length)
-    return statEmpty('Longest Query', sql, data, metadata)
+  const label = `Longest Query (p${percentile})`
+  if (isLoading) return statLoading(label)
+  if (error || !data?.length) return statEmpty(label, sql, data, metadata)
   const d = data[0] as Record<string, unknown>
   return (
     <StatCard
-      title="Longest Query"
+      title={label}
       icon={<ClockIcon className="size-3.5 text-red-500" />}
       sql={sql}
       data={data}

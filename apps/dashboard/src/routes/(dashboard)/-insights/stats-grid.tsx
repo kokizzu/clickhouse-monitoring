@@ -56,9 +56,21 @@ export function StatsGrid({
       {/* Record Breakers */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <SectionLabel title="Record Breakers" />
-        <LargestScanStat hostId={hostId} lastHours={lastHours} />
-        <FastestScanStat hostId={hostId} lastHours={lastHours} />
-        <LongestQueryStat hostId={hostId} lastHours={lastHours} />
+        <LargestScanStat
+          hostId={hostId}
+          lastHours={lastHours}
+          percentile={percentile}
+        />
+        <FastestScanStat
+          hostId={hostId}
+          lastHours={lastHours}
+          percentile={percentile}
+        />
+        <LongestQueryStat
+          hostId={hostId}
+          lastHours={lastHours}
+          percentile={percentile}
+        />
         <TotalStorageStat hostId={hostId} />
       </div>
 
