@@ -39,8 +39,8 @@ export const FEATURE_SECTIONS: FeatureSection[] = [
       'Read-only MCP endpoint — nothing applied without you',
     ],
     screenshot: {
-      src: '/assets/screenshots/ai-agent-new-dark.webp',
-      alt: 'chmonitor AI agent chat with schema-aware recommendations',
+      src: '/assets/screenshots/running-queries-new-dark-with-bg.png',
+      alt: 'chmonitor AI agent conversation with schema-aware recommendations',
     },
   },
   {
@@ -94,7 +94,7 @@ export const FEATURE_SECTIONS: FeatureSection[] = [
     screenshot: {
       // Dark-only, like the other five: a themed pair here would make this the
       // one band that flips to a light capture on the light canvas.
-      src: '/assets/screenshots/chmonitor-health-dark.png',
+      src: '/assets/screenshots/health-summary-with-bg.jpeg',
       alt: 'Health checks with editable warning and critical thresholds',
     },
     reverse: true,
@@ -112,7 +112,7 @@ export const FEATURE_SECTIONS: FeatureSection[] = [
       'Projections, skip indexes and table lineage at a glance',
     ],
     screenshot: {
-      src: '/assets/screenshots/data-explorer-new-dark.webp',
+      src: '/assets/screenshots/data-explorer-new-dark-with-bg.png',
       alt: 'Data explorer dependency graph between tables',
     },
   },
