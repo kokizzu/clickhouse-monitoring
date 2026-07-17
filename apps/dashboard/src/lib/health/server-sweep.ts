@@ -57,8 +57,10 @@ import {
   getServerPushoverConfig,
   getServerTelegramConfig,
   getServerThresholdOverrides,
+  getServerTwilioConfig,
 } from './server-alert-config'
 import { dispatchTelegram } from './telegram-dispatch'
+import { dispatchTwilio } from './twilio-dispatch'
 import { fetchData, getClickHouseConfigs } from '@chm/clickhouse-client'
 import { debug, error } from '@chm/logger'
 import { registerBuiltinRules } from '@/lib/alerting/builtin-rules'
@@ -357,11 +359,14 @@ const SWEEP_ROUTING_OWNER_ID = ''
  * matches — so deployments that never configure a route behave exactly as
  * before. Routes are best-effort (D1-backed; degrade to `[]` when D1 isn't
  * configured), so a routing-table hiccup never blocks the legacy fallback.
- * Opsgenie/PagerDuty/email are each an independent env-configured channel
- * (like Opsgenie/PagerDuty above) — none of them requires the webhook to also
- * be configured; every channel is attempted and audited on its own.
+ * Opsgenie/PagerDuty/email/Twilio are each an independent env-configured
+ * channel (like Opsgenie/PagerDuty above) — none of them requires the webhook
+ * to also be configured; every channel is attempted and audited on its own.
+ * Twilio SMS additionally honours its own severity floor (default
+ * `'critical'`) independent of the global gate below — see
+ * `getServerTwilioConfig`.
  *
- * Disabled (or no webhook URL and no routes and no Opsgenie/PagerDuty/email) →
+ * Disabled (or no webhook URL and no routes and no Opsgenie/PagerDuty/email/Twilio) →
  * rules still run, alerts are skipped.
  */
 export async function runHealthSweep(): Promise<SweepSummary> {
@@ -374,6 +379,7 @@ export async function runHealthSweep(): Promise<SweepSummary> {
   const emailConfig = getServerEmailConfig()
   const telegramFallback = getServerTelegramConfig()
   const ntfyFallback = getServerNtfyConfig()
+  const twilioConfig = getServerTwilioConfig()
   const pushoverFallback = getServerPushoverConfig()
   const canDispatch =
     settings.webhookEnabled &&
@@ -384,6 +390,7 @@ export async function runHealthSweep(): Promise<SweepSummary> {
       Boolean(emailConfig) ||
       Boolean(telegramFallback) ||
       Boolean(ntfyFallback) ||
+      Boolean(twilioConfig) ||
       Boolean(pushoverFallback))
   const minRank = SEVERITY_ORDER[settings.minSeverity]
   const cooldownMs = getServerAlertCooldownMs()
@@ -1005,6 +1012,69 @@ export async function runHealthSweep(): Promise<SweepSummary> {
         }
       }
 
+      // Twilio SMS (#2668): a single global env-configured destination (no
+      // per-route resolution yet, unlike webhook/PagerDuty/Telegram/ntfy
+      // targets above) — mirrors Opsgenie/email above. SMS costs real money
+      // per message, so unlike every other channel here it also honours its
+      // OWN severity floor (`twilioConfig.minSeverity`, default `'critical'`)
+      // on top of the global `HEALTH_ALERT_MIN_SEVERITY` gate already applied
+      // to `effective` — a warning that clears the global gate still will not
+      // page a phone unless overridden via `HEALTH_ALERT_TWILIO_MIN_SEVERITY=warning`.
+      // A recovery is gated on the severity it recovered FROM
+      // (`decision.previousSeverity`), so a condition that never paged a phone
+      // as a warning does not page one when it clears either.
+      // `dispatchTwilio` never throws (fails open), matching every other
+      // channel here.
+      const twilioTriggerSeverity: Severity =
+        decision.kind === 'recovery' ? decision.previousSeverity : effective
+      const twilioEligible =
+        twilioConfig !== null &&
+        twilioTriggerSeverity !== 'ok' &&
+        SEVERITY_ORDER[twilioTriggerSeverity] >=
+          SEVERITY_ORDER[twilioConfig.minSeverity]
+      if (twilioConfig && twilioEligible) {
+        const alertSeverity: AlertSeverity =
+          decision.kind === 'recovery'
+            ? 'recovery'
+            : (effective as 'warning' | 'critical')
+        const ok = await dispatchTwilio(
+          {
+            severity: alertSeverity,
+            hostLabel: name,
+            hostId,
+            metric: ruleId,
+            value,
+            warnThreshold,
+            critThreshold,
+            title: ruleTitle,
+            label,
+            timestamp: new Date().toISOString(),
+          },
+          twilioConfig
+        )
+        if (ok) anyDelivered = true
+
+        try {
+          await recordAlertEvent(
+            buildAlertEventRecord({
+              hostId,
+              hostLabel: name,
+              ruleId,
+              decision,
+              value,
+              delivered: ok,
+              error: ok ? undefined : 'Twilio dispatch failed',
+              channel: 'twilio',
+            })
+          )
+        } catch (err) {
+          debug(
+            `[health-sweep] alert-history record failed for host ${hostId} rule ${ruleId}`,
+            err instanceof Error ? err.message : String(err)
+          )
+        }
+      }
+
       // Pushover (#2659): every resolved recipient (matched routes, or the
       // env-configured global recipient when nothing matched).
       // `dispatchPushover` renders the JSON body and never throws (fails
@@ -1063,7 +1133,8 @@ export async function runHealthSweep(): Promise<SweepSummary> {
           ntfyTargets.length +
           pushoverTargets.length +
           (opsgenieConfig ? 1 : 0) +
-          (emailConfig ? 1 : 0) ===
+          (emailConfig ? 1 : 0) +
+          (twilioEligible ? 1 : 0) ===
           0 ||
         anyDelivered
       ) {

@@ -67,6 +67,12 @@ export {
   escapeMarkdownV2,
   telegramAdapter,
 } from './telegram'
+export {
+  buildTwilioMessage,
+  TWILIO_SMS_MAX_LENGTH,
+  truncateSmsBody,
+  twilioAdapter,
+} from './twilio'
 
 import type { AlertPayload, NotificationAdapter } from './types'
 
