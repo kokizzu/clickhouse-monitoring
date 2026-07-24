@@ -14,7 +14,7 @@
 import type { ReactNode } from 'react'
 
 import { RecentThreadsRail } from '@/components/agents/welcome/recent-threads-rail'
-import { PromptTilesGrid } from '@/components/agents/welcome/recommendations-list'
+import { SuggestedPrompts } from '@/components/agents/welcome/suggested-prompts-view'
 import { AgentGreetingIllustration } from '@/components/illustrations/agent-greeting-illustration'
 import { useAgentGreeting } from '@/lib/hooks/use-agent-greeting'
 
@@ -68,7 +68,7 @@ export function AgentWelcomeScreen({
       <div className="mb-8">{composer}</div>
 
       {/* Suggested questions — example-prompt tile grid (issue #2800) */}
-      <PromptTilesGrid onPickPrompt={onPickPrompt} limit={6} />
+      <SuggestedPrompts variant="grid" onPickPrompt={onPickPrompt} limit={6} />
 
       {/* Recent threads */}
       <RecentThreadsRail />
